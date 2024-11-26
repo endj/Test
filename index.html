@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guitar Hero - 4 Lane Game</title>
+    <style>
+        body {
+            background-color: #222;
+            color: #fff;
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            background-color: #444;
+            display: block;
+            margin: 20px auto;
+        }
+        #progressContainer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 30px;
+            height: 400px;
+            background-color: #555;
+            border: 2px solid #fff;
+        }
+        #progressBar {
+            width: 100%;
+            height: 0%;
+            background-color: #00FF00;
+        }
+        #gameOverImage {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body>
+<h1>4 Lane Rhythm Game</h1>
+<div id="progressContainer">
+    <div id="progressBar"></div>
+</div>
+<canvas id="gameCanvas" width="400" height="600"></canvas>
+<img id="gameOverImage" src="tiffy.png" alt="Game Over">
+<audio id="backgroundMusic" src="song.mp3" loop volume="0.2"></audio>
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const progressBar = document.getElementById('progressBar');
+    const gameOverImage = document.getElementById('gameOverImage');
+    const backgroundMusic = document.getElementById('backgroundMusic');
+
+    const laneWidth = canvas.width / 4;
+    const laneHeight = 100;
+    const noteWidth = laneWidth - 20;
+    const noteHeight = 20;
+    const lanes = [laneWidth * 0, laneWidth * 1, laneWidth * 2, laneWidth * 3];
+    const notes = [];
+    const speed = 2;
+    let progress = 0;
+    const keyCooldown = { a: 0, s: 0, k: 0, l: 0 };  // Cooldown for each key
+
+    const keys = {
+        a: false,  // Leftmost lane
+        s: false,  // Middle-left lane
+        k: false,  // Middle-right lane
+        l: false,  // Rightmost lane
+    };
+
+    let feedbacks = [];
+    const candyColors = ['#FF6347', '#FFD700', '#32CD32', '#1E90FF'];
+
+    let audioContext;
+
+    function playSound(frequency) {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime); // Frequency in Hz
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime); // Volume level
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.1); // Play for 0.1 seconds
+    }
+
+    function createNote() {
+        const lane = Math.floor(Math.random() * 4);
+        notes.push({ lane, y: -noteHeight });
+    }
+
+    function drawNotes() {
+        notes.forEach(note => {
+            ctx.fillStyle = candyColors[note.lane];
+            ctx.fillRect(lanes[note.lane] + 10, note.y, noteWidth, noteHeight);
+            note.y += speed;
+        });
+    }
+
+    function drawLanes() {
+        const laneColors = ['#FFA07A', '#FFEFD5', '#98FB98', '#ADD8E6'];
+        laneColors.forEach((color, index) => {
+            ctx.fillStyle = color;
+            ctx.fillRect(laneWidth * index, 0, laneWidth, canvas.height);  // Fill each lane with a different color
+        });
+
+        // Draw hit area
+        ctx.fillStyle = '#999';
+        ctx.fillRect(0, canvas.height - laneHeight, laneWidth, laneHeight);  // Leftmost lane hit area
+        ctx.fillRect(laneWidth, canvas.height - laneHeight, laneWidth, laneHeight);  // Middle-left lane hit area
+        ctx.fillRect(laneWidth * 2, canvas.height - laneHeight, laneWidth, laneHeight);  // Middle-right lane hit area
+        ctx.fillRect(laneWidth * 3, canvas.height - laneHeight, laneWidth, laneHeight);  // Rightmost lane hit area
+
+        // Draw hit area outline
+        ctx.strokeStyle = '#FFF';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(0, canvas.height - laneHeight, laneWidth, laneHeight);  // Leftmost lane hit area outline
+        ctx.strokeRect(laneWidth, canvas.height - laneHeight, laneWidth, laneHeight);  // Middle-left lane hit area outline
+        ctx.strokeRect(laneWidth * 2, canvas.height - laneHeight, laneWidth, laneHeight);  // Middle-right lane hit area outline
+        ctx.strokeRect(laneWidth * 3, canvas.height - laneHeight, laneWidth, laneHeight);  // Rightmost lane hit area outline
+    }
+
+    function drawFeedback() {
+        feedbacks.forEach((feedback, index) => {
+            ctx.fillStyle = feedback.color;
+            ctx.font = '30px Arial';
+            ctx.fillText(feedback.text, feedback.x, feedback.y);
+            feedback.y -= 2;
+            feedback.opacity -= 0.02;
+            ctx.globalAlpha = feedback.opacity;
+
+            if (feedback.opacity <= 0) {
+                feedbacks.splice(index, 1);
+            }
+            ctx.globalAlpha = 1.0;
+        });
+    }
+
+    function handleInput() {
+        for (let i = 0; i < notes.length; i++) {
+            const note = notes[i];
+            if (note.y > canvas.height - laneHeight && note.y < canvas.height) {
+                if (note.lane === 0 && keys.a && keyCooldown.a <= 0) {
+                    notes.splice(i, 1);
+                    keyCooldown.a = 12;  // Set cooldown for 12 ticks
+                    playSound(261.63);  // Play C4 for lane A
+                    console.log('Hit leftmost lane!');
+                    feedbacks.push({ text: 'Hit!', color: '#00FF00', x: laneWidth / 2 - 20, y: canvas.height - laneHeight - 10, opacity: 1 });
+                    increaseProgress(20);
+                    break;
+                } else if (note.lane === 1 && keys.s && keyCooldown.s <= 0) {
+                    notes.splice(i, 1);
+                    keyCooldown.s = 12;  // Set cooldown for 12 ticks
+                    playSound(329.63);  // Play E4 for lane S
+                    console.log('Hit middle-left lane!');
+                    feedbacks.push({ text: 'Hit!', color: '#00FF00', x: laneWidth + laneWidth / 2 - 20, y: canvas.height - laneHeight - 10, opacity: 1 });
+                    increaseProgress(20);
+                    break;
+                } else if (note.lane === 2 && keys.k && keyCooldown.k <= 0) {
+                    notes.splice(i, 1);
+                    keyCooldown.k = 12;  // Set cooldown for 12 ticks
+                    playSound(392.00);  // Play G4 for lane K
+                    console.log('Hit middle-right lane!');
+                    feedbacks.push({ text: 'Hit!', color: '#00FF00', x: laneWidth * 2 + laneWidth / 2 - 20, y: canvas.height - laneHeight - 10, opacity: 1 });
+                    increaseProgress(20);
+                    break;
+                } else if (note.lane === 3 && keys.l && keyCooldown.l <= 0) {
+                    notes.splice(i, 1);
+                    keyCooldown.l = 12;  // Set cooldown for 12 ticks
+                    playSound(493.88);  // Play B4 for lane L
+                    console.log('Hit rightmost lane!');
+                    feedbacks.push({ text: 'Hit!', color: '#00FF00', x: laneWidth * 3 + laneWidth / 2 - 20, y: canvas.height - laneHeight - 10, opacity: 1 });
+                    increaseProgress(20);
+                    break;
+                }
+            } else if (note.y <= canvas.height - laneHeight && ((keys.a && note.lane === 0 && keyCooldown.a <= 0) || (keys.s && note.lane === 1 && keyCooldown.s <= 0) || (keys.k && note.lane === 2 && keyCooldown.k <= 0) || (keys.l && note.lane === 3 && keyCooldown.l <= 0))) {
+                // Player hit too early
+                if (note.lane === 0 && keys.a) {
+                    console.log('Miss leftmost lane (too early)!');
+                    feedbacks.push({ text: 'Miss!', color: '#FF0000', x: laneWidth / 2 - 20, y: canvas.height - laneHeight - 10, opacity: 1 });
+                    removeLowestNoteInLane(0);
+                    keyCooldown.a = 12;  // Set cooldown for 12 ticks
+                    break;
+                } else if (note.lane === 1 && keys.s) {
+                    console.log('Miss middle-left lane (too early)!');
+                    feedbacks.push({ text: 'Miss!', color: '#FF0000', x: laneWidth + laneWidth / 2 - 20, y: canvas.height - laneHeight - 10, opacity: 1 });
+                    removeLowestNoteInLane(1);
+                    keyCooldown.s = 12;  // Set cooldown for 12 ticks
+                    break;
+                } else if (note.lane === 2 && keys.k) {
+                    console.log('Miss middle-right lane (too early)!');
+                    feedbacks.push({ text: 'Miss!', color: '#FF0000', x: laneWidth * 2 + laneWidth / 2 - 20, y: canvas.height - laneHeight - 10, opacity: 1 });
+                    removeLowestNoteInLane(2);
+                    keyCooldown.k = 12;  // Set cooldown for 12 ticks
+                    break;
+                } else if (note.lane === 3 && keys.l) {
+                    console.log('Miss rightmost lane (too early)!');
+                    feedbacks.push({ text: 'Miss!', color: '#FF0000', x: laneWidth * 3 + laneWidth / 2 - 20, y: canvas.height - laneHeight - 10, opacity: 1 });
+                    removeLowestNoteInLane(3);
+                    keyCooldown.l = 12;  // Set cooldown for 12 ticks
+                    break;
+                }
+            }
+        }
+    }
+
+    function removeLowestNoteInLane(lane) {
+        for (let i = 0; i < notes.length; i++) {
+            if (notes[i].lane === lane) {
+                notes.splice(i, 1);
+                break;
+            }
+        }
+    }
+
+    function increaseProgress(amount) {
+        progress += amount;
+        if (progress > 100) {
+            progress = 100;
+            endGame();
+        }
+        progressBar.style.height = progress + "%";
+    }
+
+    function endGame() {
+        // Stop the game loop
+        clearInterval(noteInterval);
+        cancelAnimationFrame(gameLoopId);
+        // Hide the canvas and show the image
+        canvas.style.display = 'none';
+        gameOverImage.style.display = 'block';
+        backgroundMusic.pause();
+    }
+
+    function update() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawLanes();
+        drawNotes();
+        drawFeedback();
+        handleInput();
+
+        // Decrease cooldowns
+        Object.keys(keyCooldown).forEach(key => {
+            if (keyCooldown[key] > 0) {
+                keyCooldown[key]--;
+            }
+        });
+    }
+
+    let gameLoopId;
+    function gameLoop() {
+        update();
+        gameLoopId = requestAnimationFrame(gameLoop);
+    }
+
+    // Set up keydown and keyup event listeners
+    window.addEventListener('keydown', (e) => {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            audioContext.resume();
+        }
+        if (backgroundMusic.paused) {
+            backgroundMusic.volume = 0.2;
+            backgroundMusic.play();
+        }
+        if (e.key === 'a') keys.a = true;
+        if (e.key === 's') keys.s = true;
+        if (e.key === 'k') keys.k = true;
+        if (e.key === 'l') keys.l = true;
+    });
+
+    window.addEventListener('keyup', (e) => {
+        if (e.key === 'a') keys.a = false;
+        if (e.key === 's') keys.s = false;
+        if (e.key === 'k') keys.k = false;
+        if (e.key === 'l') keys.l = false;
+    });
+
+    // Start the game
+    const noteInterval = setInterval(createNote, 1000);
+    gameLoop();
+</script>
+</body>
+</html>
