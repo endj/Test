@@ -11,11 +11,13 @@
             text-align: center;
             font-family: Arial, sans-serif;
         }
+
         canvas {
             background-color: #444;
             display: block;
             margin: 20px auto;
         }
+
         #progressContainer {
             position: absolute;
             top: 20px;
@@ -25,11 +27,13 @@
             background-color: #555;
             border: 2px solid #fff;
         }
+
         #progressBar {
             width: 100%;
             height: 0%;
             background-color: #00FF00;
         }
+
         #gameOverImage {
             display: none;
             position: absolute;
@@ -40,7 +44,8 @@
     </style>
 </head>
 <body>
-<h1>4 Lane Rhythm Game</h1>
+<h1>"Guitar Hero" inspired Rhythm Mini-Game</h1>
+<h3>Keyboard Controls: ASKL</h3>
 <div id="progressContainer">
     <div id="progressBar"></div>
 </div>
@@ -62,7 +67,18 @@
     const notes = [];
     const speed = 2;
     let progress = 0;
-    const keyCooldown = { a: 0, s: 0, k: 0, l: 0 };  // Cooldown for each key
+    const keyCooldown = {a: 0, s: 0, k: 0, l: 0};  // Cooldown for each key
+
+    const noteImages = [
+        new Image(),
+        new Image(),
+        new Image(),
+        new Image()
+    ];
+    noteImages[0].src = 'fish.png';
+    noteImages[1].src = 'colorbomb.png';
+    noteImages[2].src = 'coconut.webp';
+    noteImages[3].src = 'hammer.png';
 
     const keys = {
         a: false,  // Leftmost lane
@@ -72,8 +88,6 @@
     };
 
     let feedbacks = [];
-    const candyColors = ['#FF6347', '#FFD700', '#32CD32', '#1E90FF'];
-
     let audioContext;
 
     function playSound(frequency) {
@@ -95,13 +109,13 @@
 
     function createNote() {
         const lane = Math.floor(Math.random() * 4);
-        notes.push({ lane, y: -noteHeight });
+        notes.push({lane, y: -noteHeight});
     }
 
     function drawNotes() {
         notes.forEach(note => {
-            ctx.fillStyle = candyColors[note.lane];
-            ctx.fillRect(lanes[note.lane] + 10, note.y, noteWidth, noteHeight);
+            const img = noteImages[note.lane]
+            ctx.drawImage(img, lanes[note.lane] + 10, note.y, noteWidth, noteWidth)
             note.y += speed;
         });
     }
@@ -154,7 +168,13 @@
                     keyCooldown.a = 12;  // Set cooldown for 12 ticks
                     playSound(261.63);  // Play C4 for lane A
                     console.log('Hit leftmost lane!');
-                    feedbacks.push({ text: 'Hit!', color: '#00FF00', x: laneWidth / 2 - 20, y: canvas.height - laneHeight - 10, opacity: 1 });
+                    feedbacks.push({
+                        text: 'Hit!',
+                        color: '#00FF00',
+                        x: laneWidth / 2 - 20,
+                        y: canvas.height - laneHeight - 10,
+                        opacity: 1
+                    });
                     increaseProgress(20);
                     break;
                 } else if (note.lane === 1 && keys.s && keyCooldown.s <= 0) {
@@ -162,7 +182,13 @@
                     keyCooldown.s = 12;  // Set cooldown for 12 ticks
                     playSound(329.63);  // Play E4 for lane S
                     console.log('Hit middle-left lane!');
-                    feedbacks.push({ text: 'Hit!', color: '#00FF00', x: laneWidth + laneWidth / 2 - 20, y: canvas.height - laneHeight - 10, opacity: 1 });
+                    feedbacks.push({
+                        text: 'Hit!',
+                        color: '#00FF00',
+                        x: laneWidth + laneWidth / 2 - 20,
+                        y: canvas.height - laneHeight - 10,
+                        opacity: 1
+                    });
                     increaseProgress(20);
                     break;
                 } else if (note.lane === 2 && keys.k && keyCooldown.k <= 0) {
@@ -170,7 +196,13 @@
                     keyCooldown.k = 12;  // Set cooldown for 12 ticks
                     playSound(392.00);  // Play G4 for lane K
                     console.log('Hit middle-right lane!');
-                    feedbacks.push({ text: 'Hit!', color: '#00FF00', x: laneWidth * 2 + laneWidth / 2 - 20, y: canvas.height - laneHeight - 10, opacity: 1 });
+                    feedbacks.push({
+                        text: 'Hit!',
+                        color: '#00FF00',
+                        x: laneWidth * 2 + laneWidth / 2 - 20,
+                        y: canvas.height - laneHeight - 10,
+                        opacity: 1
+                    });
                     increaseProgress(20);
                     break;
                 } else if (note.lane === 3 && keys.l && keyCooldown.l <= 0) {
@@ -178,7 +210,13 @@
                     keyCooldown.l = 12;  // Set cooldown for 12 ticks
                     playSound(493.88);  // Play B4 for lane L
                     console.log('Hit rightmost lane!');
-                    feedbacks.push({ text: 'Hit!', color: '#00FF00', x: laneWidth * 3 + laneWidth / 2 - 20, y: canvas.height - laneHeight - 10, opacity: 1 });
+                    feedbacks.push({
+                        text: 'Hit!',
+                        color: '#00FF00',
+                        x: laneWidth * 3 + laneWidth / 2 - 20,
+                        y: canvas.height - laneHeight - 10,
+                        opacity: 1
+                    });
                     increaseProgress(20);
                     break;
                 }
@@ -186,27 +224,55 @@
                 // Player hit too early
                 if (note.lane === 0 && keys.a) {
                     console.log('Miss leftmost lane (too early)!');
-                    feedbacks.push({ text: 'Miss!', color: '#FF0000', x: laneWidth / 2 - 20, y: canvas.height - laneHeight - 10, opacity: 1 });
+                    feedbacks.push({
+                        text: 'Miss!',
+                        color: '#FF0000',
+                        x: laneWidth / 2 - 20,
+                        y: canvas.height - laneHeight - 10,
+                        opacity: 1
+                    });
                     removeLowestNoteInLane(0);
                     keyCooldown.a = 12;  // Set cooldown for 12 ticks
+                    reduceProgress(10)
                     break;
                 } else if (note.lane === 1 && keys.s) {
                     console.log('Miss middle-left lane (too early)!');
-                    feedbacks.push({ text: 'Miss!', color: '#FF0000', x: laneWidth + laneWidth / 2 - 20, y: canvas.height - laneHeight - 10, opacity: 1 });
+                    feedbacks.push({
+                        text: 'Miss!',
+                        color: '#FF0000',
+                        x: laneWidth + laneWidth / 2 - 20,
+                        y: canvas.height - laneHeight - 10,
+                        opacity: 1
+                    });
                     removeLowestNoteInLane(1);
                     keyCooldown.s = 12;  // Set cooldown for 12 ticks
+                    reduceProgress(10)
                     break;
                 } else if (note.lane === 2 && keys.k) {
                     console.log('Miss middle-right lane (too early)!');
-                    feedbacks.push({ text: 'Miss!', color: '#FF0000', x: laneWidth * 2 + laneWidth / 2 - 20, y: canvas.height - laneHeight - 10, opacity: 1 });
+                    feedbacks.push({
+                        text: 'Miss!',
+                        color: '#FF0000',
+                        x: laneWidth * 2 + laneWidth / 2 - 20,
+                        y: canvas.height - laneHeight - 10,
+                        opacity: 1
+                    });
                     removeLowestNoteInLane(2);
                     keyCooldown.k = 12;  // Set cooldown for 12 ticks
+                    reduceProgress(10)
                     break;
                 } else if (note.lane === 3 && keys.l) {
                     console.log('Miss rightmost lane (too early)!');
-                    feedbacks.push({ text: 'Miss!', color: '#FF0000', x: laneWidth * 3 + laneWidth / 2 - 20, y: canvas.height - laneHeight - 10, opacity: 1 });
+                    feedbacks.push({
+                        text: 'Miss!',
+                        color: '#FF0000',
+                        x: laneWidth * 3 + laneWidth / 2 - 20,
+                        y: canvas.height - laneHeight - 10,
+                        opacity: 1
+                    });
                     removeLowestNoteInLane(3);
                     keyCooldown.l = 12;  // Set cooldown for 12 ticks
+                    reduceProgress(10)
                     break;
                 }
             }
@@ -222,6 +288,11 @@
         }
     }
 
+    function reduceProgress(amount) {
+        progress = Math.max(0, progress - amount)
+        progressBar.style.height = progress + "%";
+    }
+
     function increaseProgress(amount) {
         progress += amount;
         if (progress > 100) {
@@ -232,10 +303,8 @@
     }
 
     function endGame() {
-        // Stop the game loop
         clearInterval(noteInterval);
         cancelAnimationFrame(gameLoopId);
-        // Hide the canvas and show the image
         canvas.style.display = 'none';
         gameOverImage.style.display = 'block';
         backgroundMusic.pause();
@@ -257,12 +326,12 @@
     }
 
     let gameLoopId;
+
     function gameLoop() {
         update();
         gameLoopId = requestAnimationFrame(gameLoop);
     }
 
-    // Set up keydown and keyup event listeners
     window.addEventListener('keydown', (e) => {
         if (!audioContext) {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
